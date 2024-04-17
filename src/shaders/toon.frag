@@ -47,5 +47,44 @@ out vec4 fragColor;
 
 void main() 
 {
-    fragColor = vec4(0, 0, 0, 1);
+    vec3 n = normalize(vertNormalWorld);
+
+    // light calculations
+    vec3 illumination = vec3(0, 0, 0);
+    for(int i=0; i < numLights; i++)
+    {
+        // Ambient component
+        illumination += kAmbient * ambientIntensities[i];
+
+        // Don't forget to normalize the vectors!
+        vec3 l;
+        if(lightTypes[i] == POINT_LIGHT)
+            l = normalize(lightPositions[i] - vertPositionWorld);
+        else
+            l = normalize(lightPositions[i]); 
+
+        // Diffuse component
+        float diffuseIntensity = (dot(n, l) + 1.0) / 2.0;
+        vec3 diffuseComponent = texture(diffuseRamp, vec2(diffuseIntensity, 0.5)).rgb;
+        illumination += diffuseComponent * kDiffuse * diffuseIntensities[i];
+
+        // Compute the vector from the vertex to the eye
+        vec3 e = normalize(eyePosition - vertPositionWorld);
+
+        // Compute the halfway vector for the Blinn-Phong reflection model
+        vec3 h = normalize(l + e);
+
+        // Specular component
+        float specularIntensity = pow(max(dot(h, n), 0.0), shininess);
+        vec3 specularComponent = texture(specularRamp, vec2(specularIntensity, 0.5)).rgb;
+        illumination += specularComponent * kSpecular * specularIntensities[i];
+    }
+
+    fragColor = vertColor;
+    fragColor.rgb *= illumination;
+
+    if(useTexture != 0)
+    {
+        fragColor *= texture(textureImage, uv);
+    }
 }
